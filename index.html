@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Predator vs Prey — Interactive Ecosystem</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header>
+      <h1>Predator vs Prey — Interactive Ecosystem</h1>
+      <p class="subtitle">Agent-based simulation with live population graph</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls">
+        <h2>Controls</h2>
+        <div class="controls-row">
+          <button id="startPauseBtn">Start</button>
+          <button id="stepBtn">Step</button>
+          <button id="resetBtn" class="secondary">Reset</button>
+          <label class="inline">
+            Speed
+            <input id="speedRange" type="range" min="10" max="500" step="10" value="60" />
+            <span id="speedLabel">60 ms/tick</span>
+          </label>
+        </div>
+
+        <h3>Initialization</h3>
+        <div class="grid-2">
+          <label>
+            World width (cells)
+            <input id="worldWidth" type="number" min="20" max="400" value="120" />
+          </label>
+          <label>
+            World height (cells)
+            <input id="worldHeight" type="number" min="20" max="300" value="80" />
+          </label>
+          <label>
+            Initial prey
+            <input id="initPrey" type="number" min="0" max="20000" value="800" />
+          </label>
+          <label>
+            Initial predators
+            <input id="initPredators" type="number" min="0" max="20000" value="120" />
+          </label>
+        </div>
+
+        <h3>Model parameters</h3>
+        <div class="grid-2">
+          <label>
+            Prey reproduction prob
+            <input id="preyReproProb" type="number" min="0" max="1" step="0.001" value="0.05" />
+          </label>
+          <label>
+            Predator reproduction prob
+            <input id="predReproProb" type="number" min="0" max="1" step="0.001" value="0.02" />
+          </label>
+          <label>
+            Predator metabolism (energy/tick)
+            <input id="predMetabolism" type="number" min="0" max="20" step="0.1" value="1.0" />
+          </label>
+          <label>
+            Energy per prey eaten
+            <input id="energyPerPrey" type="number" min="0" max="100" step="1" value="10" />
+          </label>
+          <label>
+            Predator reproduce energy ≥
+            <input id="predReproEnergy" type="number" min="0" max="200" step="1" value="30" />
+          </label>
+          <label>
+            Max graph points
+            <input id="maxGraphPoints" type="number" min="50" max="5000" step="50" value="1000" />
+          </label>
+        </div>
+
+        <details class="notes">
+          <summary>Notes</summary>
+          <ul>
+            <li>World wraps around edges (toroidal).</li>
+            <li>Multiple agents can occupy a cell. Predators eat one prey if present.</li>
+            <li>Reset to apply parameter and world size changes.</li>
+          </ul>
+        </details>
+
+        <div class="stats">
+          <div>Tick: <span id="tickLabel">0</span></div>
+          <div>Prey: <span id="preyCount">0</span></div>
+          <div>Predators: <span id="predCount">0</span></div>
+        </div>
+      </section>
+
+      <section class="panel sim">
+        <h2>World</h2>
+        <canvas id="worldCanvas" width="840" height="560" aria-label="simulation world"></canvas>
+      </section>
+
+      <section class="panel chart">
+        <h2>Population over time</h2>
+        <div id="chartWarning" class="warning" hidden>
+          Chart.js didn't load. The population graph is disabled. If you're offline or a content blocker is active, try the README's local server instructions or allow cdn.jsdelivr.net.
+        </div>
+        <canvas id="popChart"></canvas>
+      </section>
+    </main>
+
+    <footer>
+      <a href="./README.md" target="_blank" rel="noopener">README</a>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="./script.js"></script>
+  </body>
+  </html>
