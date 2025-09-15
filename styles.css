@@ -72,7 +72,8 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .stats { display: flex; gap: 16px; margin-top: 12px; color: var(--muted); }
 
-.sim canvas { width: 100%; height: auto; image-rendering: pixelated; border-radius: 8px; border: 1px solid #2b3256; }
+.panel.sim { max-height: 48vh; overflow: hidden; }
+.sim canvas { width: 100%; height: auto; max-height: 46vh; image-rendering: pixelated; border-radius: 8px; border: 1px solid #2b3256; }
 .panel.chart { height: 280px; overflow: hidden; }
 .panel.chart h2 { margin-bottom: 8px; }
 .chart canvas { width: 100%; height: 100%; border-radius: 8px; border: 1px solid #2b3256; background: #0b0e1a; }

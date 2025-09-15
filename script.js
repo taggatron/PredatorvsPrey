@@ -48,12 +48,21 @@
     const W = clamp(parseInt(worldWidthInput.value, 10) || 120, 20, 400);
     const H = clamp(parseInt(worldHeightInput.value, 10) || 80, 20, 300);
 
-    // Resize canvas keeping approximate aspect ratio via cell size
-    // Compute cell size that fits current canvas width while being >= 3px
-    cellSize = Math.max(3, Math.floor(Math.min(canvas.width / W, canvas.height / H)));
-    // Adjust canvas to exact grid size in pixels for crisp rendering
-    canvas.width = W * cellSize;
-    canvas.height = H * cellSize;
+  // Resize canvas to fit viewport without scrolling too much
+  // Compute a target pixel size bounded by viewport
+  // Measure available space from the sim panel container to keep canvas compact
+  const simPanel = document.querySelector('.panel.sim');
+  const rect = simPanel ? simPanel.getBoundingClientRect() : { width: canvas.parentElement?.clientWidth || canvas.width, height: canvas.parentElement?.clientHeight || canvas.height };
+  const maxCanvasWidth = Math.max(240, Math.floor(rect.width - 8));
+  const maxCanvasHeight = Math.max(160, Math.floor(rect.height - 40));
+  // Estimate cell size to fit within those bounds
+  const sizeByW = Math.floor(maxCanvasWidth / W);
+  const sizeByH = Math.floor(maxCanvasHeight / H);
+  cellSize = Math.max(1, Math.min(8, Math.min(sizeByW, sizeByH)));
+  // Fallback to previous size if bounds were too tight
+  if (!isFinite(cellSize) || cellSize < 1) cellSize = 4;
+  canvas.width = Math.max(100, W * cellSize);
+  canvas.height = Math.max(100, H * cellSize);
 
     const initPrey = clamp(parseInt(initPreyInput.value, 10) || 800, 0, 20000);
     const initPred = clamp(parseInt(initPredatorsInput.value, 10) || 120, 0, 20000);
@@ -340,4 +349,23 @@
   // Initialize
   speedLabel.textContent = `${speedRange.value} ms/tick`;
   initState();
+  // Recompute layout when window resizes
+  window.addEventListener('resize', () => {
+    if (!state) return;
+    // Re-init to recompute canvas size based on container; keep populations
+    const { prey, predators, params, tick } = state;
+    const W = clamp(parseInt(worldWidthInput.value, 10) || state.W, 20, 400);
+    const H = clamp(parseInt(worldHeightInput.value, 10) || state.H, 20, 300);
+    // Recompute canvas sizing without resetting agents
+    const simPanel = document.querySelector('.panel.sim');
+    const rect = simPanel ? simPanel.getBoundingClientRect() : { width: canvas.parentElement?.clientWidth || canvas.width, height: canvas.parentElement?.clientHeight || canvas.height };
+    const maxCanvasWidth = Math.max(240, Math.floor(rect.width - 8));
+    const maxCanvasHeight = Math.max(160, Math.floor(rect.height - 40));
+    const sizeByW = Math.floor(maxCanvasWidth / W);
+    const sizeByH = Math.floor(maxCanvasHeight / H);
+    cellSize = Math.max(1, Math.min(8, Math.min(sizeByW, sizeByH)));
+    canvas.width = Math.max(100, W * cellSize);
+    canvas.height = Math.max(100, H * cellSize);
+    draw();
+  });
 })();
