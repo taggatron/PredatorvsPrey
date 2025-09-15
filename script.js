@@ -201,8 +201,15 @@
         plugins: {
           legend: { labels: { color: '#e5e7ef' } },
         },
+        layout: {
+          padding: { top: 6, right: 6, bottom: 14, left: 6 },
+        },
         scales: {
-          x: { ticks: { color: '#97a0b5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: {
+            ticks: { color: '#97a0b5', padding: 6 },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            border: { display: true, color: '#2b3256' },
+          },
           y: { ticks: { color: '#97a0b5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
           y1: {
             position: 'right',
