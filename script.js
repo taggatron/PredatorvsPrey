@@ -12,6 +12,7 @@
   const startPauseBtn = document.getElementById('startPauseBtn');
   const stepBtn = document.getElementById('stepBtn');
   const resetBtn = document.getElementById('resetBtn');
+  const modelSelect = document.getElementById('modelSelect');
   const speedRange = document.getElementById('speedRange');
   const speedLabel = document.getElementById('speedLabel');
   const tickLabel = document.getElementById('tickLabel');
@@ -33,6 +34,8 @@
   const predVisionInput = document.getElementById('predVision');
   const preyKInput = document.getElementById('preyK');
 
+  // ODE inputs removed (LV/RM no longer exposed)
+
   // Chart
   const popCanvas = document.getElementById('popChart');
   const chartWarning = document.getElementById('chartWarning');
@@ -47,7 +50,10 @@
   const randInt = (n) => Math.floor(Math.random() * n);
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+  // ODE params function removed
+
   function initState() {
+  const mode = 'agent';
     const W = clamp(parseInt(worldWidthInput.value, 10) || 120, 20, 400);
     const H = clamp(parseInt(worldHeightInput.value, 10) || 80, 20, 300);
 
@@ -67,8 +73,8 @@
   canvas.width = Math.max(100, W * cellSize);
   canvas.height = Math.max(100, H * cellSize);
 
-    const initPrey = clamp(parseInt(initPreyInput.value, 10) || 800, 0, 20000);
-    const initPred = clamp(parseInt(initPredatorsInput.value, 10) || 120, 0, 20000);
+    const initPrey = clamp(parseInt(initPreyInput.value, 10) || 800, 0, 2000000);
+    const initPred = clamp(parseInt(initPredatorsInput.value, 10) || 120, 0, 2000000);
     const preyReproProb = clamp(parseFloat(preyReproProbInput.value) || 0.05, 0, 1);
     const predReproProb = clamp(parseFloat(predReproProbInput.value) || 0.02, 0, 1);
     const predMetabolism = clamp(parseFloat(predMetabolismInput.value) || 1.0, 0, 20);
@@ -77,30 +83,32 @@
     const maxGraphPoints = clamp(parseInt(maxGraphPointsInput.value, 10) || 1000, 50, 5000);
     const predVision = clamp(parseInt(predVisionInput?.value, 10) || 4, 0, 20);
     const preyK = (() => {
-      const v = parseInt(preyKInput?.value, 10);
-      if (isNaN(v) || v <= 0) return Math.floor(W * H * 0.35); // auto default
+      const v = parseFloat(preyKInput?.value);
+      if (isNaN(v) || v <= 0) return 1500; // default stable value per request
       return v;
     })();
+  if (mode === 'agent') {
+      const prey = new Array(initPrey).fill(0).map(() => ({
+        x: randInt(W),
+        y: randInt(H),
+      }));
+      const predators = new Array(initPred).fill(0).map(() => ({
+        x: randInt(W),
+        y: randInt(H),
+        // Start predators with moderate energy to avoid immediate die-off or instant reproduction burst
+        energy: Math.max(predReproEnergy * 0.6, predMetabolism * 6),
+      }));
 
-    const prey = new Array(initPrey).fill(0).map(() => ({
-      x: randInt(W),
-      y: randInt(H),
-    }));
-    const predators = new Array(initPred).fill(0).map(() => ({
-      x: randInt(W),
-      y: randInt(H),
-      // Start predators with moderate energy to avoid immediate die-off or instant reproduction burst
-      energy: Math.max(predReproEnergy * 0.6, predMetabolism * 6),
-    }));
-
-    state = {
-      W, H,
-      prey,
-      predators,
-      tick: 0,
-      params: { preyReproProb, predReproProb, predMetabolism, energyPerPrey, predReproEnergy, maxGraphPoints, predVision, preyK },
-      graph: { t: [], prey: [], pred: [] },
-    };
+      state = {
+        mode,
+        W, H,
+        prey,
+        predators,
+        tick: 0,
+        params: { preyReproProb, predReproProb, predMetabolism, energyPerPrey, predReproEnergy, maxGraphPoints, predVision, preyK },
+        graph: { t: [], prey: [], pred: [] },
+      };
+    }
 
     resetChart(maxGraphPoints);
     updateStats();
@@ -115,7 +123,7 @@
         preyReproProb: 0.045, predReproProb: 0.03,
         predMetabolism: 0.9, energyPerPrey: 8, predReproEnergy: 24,
         worldWidth: 80, worldHeight: 60, maxGraphPoints: 1200,
-        predVision: 4, preyK: 0, // 0 means auto
+        predVision: 4, preyK: 1500,
       },
       chaotic: {
         initPrey: 700, initPred: 50,
@@ -139,14 +147,15 @@
     // Update advanced inputs
     worldWidthInput.value = p.worldWidth;
     worldHeightInput.value = p.worldHeight;
-    preyReproProbInput.value = p.preyReproProb;
-    predReproProbInput.value = p.predReproProb;
-    predMetabolismInput.value = p.predMetabolism;
-    energyPerPreyInput.value = p.energyPerPrey;
-    predReproEnergyInput.value = p.predReproEnergy;
-  maxGraphPointsInput.value = p.maxGraphPoints;
-  if (predVisionInput) predVisionInput.value = p.predVision;
-  if (preyKInput) preyKInput.value = p.preyK || '';
+    if ('preyReproProb' in p) preyReproProbInput.value = p.preyReproProb;
+    if ('predReproProb' in p) predReproProbInput.value = p.predReproProb;
+    if ('predMetabolism' in p) predMetabolismInput.value = p.predMetabolism;
+    if ('energyPerPrey' in p) energyPerPreyInput.value = p.energyPerPrey;
+    if ('predReproEnergy' in p) predReproEnergyInput.value = p.predReproEnergy;
+    if ('maxGraphPoints' in p) maxGraphPointsInput.value = p.maxGraphPoints;
+    if (predVisionInput && 'predVision' in p) predVisionInput.value = p.predVision;
+    if (preyKInput && 'preyK' in p) preyKInput.value = p.preyK || '';
+    // Model is fixed to agent-based
   }
 
   function resetChart(maxPoints) {
@@ -222,16 +231,21 @@
 
   function step() {
     if (!state) return;
-    const { W, H, params } = state;
+    const { W, H, params, mode } = state;
 
+    // Agent-based model below
+    
+    const { W: _W, H: _H } = state; // shadow for clarity
+    
     // Move prey and handle reproduction (logistic, approximated): p * (1 - N/K)
+
     const newPrey = [];
     const K = Math.max(1, state.params.preyK);
     const N = state.prey.length;
     const effRepro = Math.max(0, Math.min(1, state.params.preyReproProb * (1 - N / K)));
     for (let i = 0; i < state.prey.length; i++) {
       const p = state.prey[i];
-      moveAgent(p, W, H);
+      moveAgent(p, _W, _H);
       newPrey.push(p);
       if (Math.random() < effRepro) {
         newPrey.push({ x: p.x, y: p.y });
@@ -243,7 +257,7 @@
     const preyIndex = new Map(); // key: y*W + x -> array indices
     for (let i = 0; i < state.prey.length; i++) {
       const p = state.prey[i];
-      const key = p.y * W + p.x;
+      const key = p.y * _W + p.x;
       let arr = preyIndex.get(key);
       if (!arr) { arr = []; preyIndex.set(key, arr); }
       arr.push(i);
@@ -272,10 +286,10 @@
           }
         }
       }
-      if (target) moveToward(pred, target, W, H); else moveAgent(pred, W, H);
+      if (target) moveToward(pred, target, _W, _H); else moveAgent(pred, _W, _H);
 
       // Eat one prey on same cell, if any
-      const key = pred.y * W + pred.x;
+      const key = pred.y * _W + pred.x;
       const indices = preyIndex.get(key);
       if (indices && indices.length) {
         // pop one prey index and mark as eaten
@@ -417,6 +431,8 @@
     setRunning(false);
     initState();
   });
+
+  // modelSelect is now fixed to agent-based; no change handler needed
 
   if (presetSelect) {
     presetSelect.addEventListener('change', () => {

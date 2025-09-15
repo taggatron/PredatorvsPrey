@@ -29,8 +29,6 @@
             Model
             <select id="modelSelect">
               <option value="agent" selected>Agent-based</option>
-              <option value="lv">Lotka–Volterra</option>
-              <option value="rm">Rosenzweig–MacArthur</option>
             </select>
           </label>
           <label class="inline">
@@ -77,7 +75,7 @@
             </label>
             <label>
               Prey carrying capacity K
-              <input id="preyK" type="number" min="0" step="1" placeholder="auto (~0.35×W×H)" />
+              <input id="preyK" type="number" min="0" step="1" value="1500" />
             </label>
             <label>
               Prey reproduction prob
@@ -104,31 +102,7 @@
               <input id="maxGraphPoints" type="number" min="50" max="5000" step="50" value="1200" />
             </label>
             
-            <h3 style="grid-column: 1 / -1; margin: 6px 0; color: var(--muted);">ODE model parameters (LV/RM)</h3>
-            <label>
-              Prey reproduction rate r
-              <input id="odePreyR" type="number" min="0" step="0.001" value="1.0" />
-            </label>
-            <label>
-              Predator hunting efficiency a
-              <input id="odeAttackA" type="number" min="0" step="0.001" value="1.6" />
-            </label>
-            <label>
-              Predator handling time h (RM)
-              <input id="odeHandlingH" type="number" min="0" step="0.001" value="0.12" />
-            </label>
-            <label>
-              Predator conversion efficiency e
-              <input id="odeEfficiencyE" type="number" min="0" step="0.001" value="0.2" />
-            </label>
-            <label>
-              Predator natural death rate m
-              <input id="odeDeathM" type="number" min="0" step="0.001" value="0.4" />
-            </label>
-            <label>
-              Time step dt
-              <input id="odeDt" type="number" min="0.001" step="0.001" value="0.05" />
-            </label>
+            
           </div>
         </details>
 
