@@ -180,6 +180,7 @@
             tension: 0.15,
             pointRadius: 0,
             borderWidth: 2,
+            yAxisID: 'y',
           },
           {
             label: 'Predators',
@@ -189,6 +190,7 @@
             tension: 0.15,
             pointRadius: 0,
             borderWidth: 2,
+            yAxisID: 'y1',
           },
         ],
       },
@@ -202,6 +204,11 @@
         scales: {
           x: { ticks: { color: '#97a0b5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
           y: { ticks: { color: '#97a0b5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y1: {
+            position: 'right',
+            ticks: { color: '#97a0b5' },
+            grid: { drawOnChartArea: false },
+          },
         },
       },
     });
