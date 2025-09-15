@@ -80,7 +80,8 @@
     const predators = new Array(initPred).fill(0).map(() => ({
       x: randInt(W),
       y: randInt(H),
-      energy: Math.max(predReproEnergy / 2, predMetabolism * 5),
+      // Start predators with moderate energy to avoid immediate die-off or instant reproduction burst
+      energy: Math.max(predReproEnergy * 0.6, predMetabolism * 6),
     }));
 
     state = {
