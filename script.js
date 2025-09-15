@@ -17,6 +17,7 @@
   const tickLabel = document.getElementById('tickLabel');
   const preyCountEl = document.getElementById('preyCount');
   const predCountEl = document.getElementById('predCount');
+  const presetSelect = document.getElementById('presetSelect');
 
   // Params inputs
   const worldWidthInput = document.getElementById('worldWidth');
@@ -29,6 +30,8 @@
   const energyPerPreyInput = document.getElementById('energyPerPrey');
   const predReproEnergyInput = document.getElementById('predReproEnergy');
   const maxGraphPointsInput = document.getElementById('maxGraphPoints');
+  const predVisionInput = document.getElementById('predVision');
+  const preyKInput = document.getElementById('preyK');
 
   // Chart
   const popCanvas = document.getElementById('popChart');
@@ -72,6 +75,12 @@
     const energyPerPrey = clamp(parseFloat(energyPerPreyInput.value) || 10, 0, 100);
     const predReproEnergy = clamp(parseFloat(predReproEnergyInput.value) || 30, 0, 200);
     const maxGraphPoints = clamp(parseInt(maxGraphPointsInput.value, 10) || 1000, 50, 5000);
+    const predVision = clamp(parseInt(predVisionInput?.value, 10) || 4, 0, 20);
+    const preyK = (() => {
+      const v = parseInt(preyKInput?.value, 10);
+      if (isNaN(v) || v <= 0) return Math.floor(W * H * 0.35); // auto default
+      return v;
+    })();
 
     const prey = new Array(initPrey).fill(0).map(() => ({
       x: randInt(W),
@@ -89,13 +98,55 @@
       prey,
       predators,
       tick: 0,
-      params: { preyReproProb, predReproProb, predMetabolism, energyPerPrey, predReproEnergy, maxGraphPoints },
+      params: { preyReproProb, predReproProb, predMetabolism, energyPerPrey, predReproEnergy, maxGraphPoints, predVision, preyK },
       graph: { t: [], prey: [], pred: [] },
     };
 
     resetChart(maxGraphPoints);
     updateStats();
     draw();
+  }
+
+  function applyPreset(name) {
+    // Define a few balanced presets
+    const presets = {
+      classic: {
+        initPrey: 500, initPred: 60,
+        preyReproProb: 0.045, predReproProb: 0.03,
+        predMetabolism: 0.9, energyPerPrey: 8, predReproEnergy: 24,
+        worldWidth: 80, worldHeight: 60, maxGraphPoints: 1200,
+        predVision: 4, preyK: 0, // 0 means auto
+      },
+      chaotic: {
+        initPrey: 700, initPred: 50,
+        preyReproProb: 0.06, predReproProb: 0.045,
+        predMetabolism: 0.8, energyPerPrey: 10, predReproEnergy: 22,
+        worldWidth: 80, worldHeight: 60, maxGraphPoints: 1500,
+        predVision: 5, preyK: 0,
+      },
+      stable: {
+        initPrey: 400, initPred: 70,
+        preyReproProb: 0.035, predReproProb: 0.02,
+        predMetabolism: 1.0, energyPerPrey: 8, predReproEnergy: 26,
+        worldWidth: 80, worldHeight: 60, maxGraphPoints: 1000,
+        predVision: 3, preyK: 0,
+      },
+    };
+    const p = presets[name] || presets.classic;
+    // Update visible inputs
+    initPreyInput.value = p.initPrey;
+    initPredatorsInput.value = p.initPred;
+    // Update advanced inputs
+    worldWidthInput.value = p.worldWidth;
+    worldHeightInput.value = p.worldHeight;
+    preyReproProbInput.value = p.preyReproProb;
+    predReproProbInput.value = p.predReproProb;
+    predMetabolismInput.value = p.predMetabolism;
+    energyPerPreyInput.value = p.energyPerPrey;
+    predReproEnergyInput.value = p.predReproEnergy;
+  maxGraphPointsInput.value = p.maxGraphPoints;
+  if (predVisionInput) predVisionInput.value = p.predVision;
+  if (preyKInput) preyKInput.value = p.preyK || '';
   }
 
   function resetChart(maxPoints) {
@@ -159,17 +210,30 @@
     agent.y = wrap(agent.y + dy, H);
   }
 
+  function moveToward(agent, target, W, H) {
+    // Choose the shortest wrap-around direction per axis
+    const dxRaw = target.x - agent.x;
+    const dyRaw = target.y - agent.y;
+    const dx = Math.abs(dxRaw) > W / 2 ? -Math.sign(dxRaw) : Math.sign(dxRaw);
+    const dy = Math.abs(dyRaw) > H / 2 ? -Math.sign(dyRaw) : Math.sign(dyRaw);
+    agent.x = wrap(agent.x + dx, W);
+    agent.y = wrap(agent.y + dy, H);
+  }
+
   function step() {
     if (!state) return;
     const { W, H, params } = state;
 
-    // Move prey and handle reproduction
+    // Move prey and handle reproduction (logistic, approximated): p * (1 - N/K)
     const newPrey = [];
+    const K = Math.max(1, state.params.preyK);
+    const N = state.prey.length;
+    const effRepro = Math.max(0, Math.min(1, state.params.preyReproProb * (1 - N / K)));
     for (let i = 0; i < state.prey.length; i++) {
       const p = state.prey[i];
       moveAgent(p, W, H);
       newPrey.push(p);
-      if (Math.random() < params.preyReproProb) {
+      if (Math.random() < effRepro) {
         newPrey.push({ x: p.x, y: p.y });
       }
     }
@@ -185,13 +249,30 @@
       arr.push(i);
     }
 
-    // Predators: move, eat one prey if present, lose metabolism, reproduce probabilistically if energy high enough
+    // Predators: move (vision-aware), eat one prey if present, lose metabolism, reproduce probabilistically if energy high enough
     const survivors = [];
     const newbornPred = [];
     const eatenPreyIdx = new Set();
     for (let i = 0; i < state.predators.length; i++) {
       const pred = state.predators[i];
-      moveAgent(pred, W, H);
+      // Move: if prey within vision radius, step toward nearest; else random
+      const V = params.predVision;
+      let target = null;
+      if (V > 0 && state.prey.length) {
+        // search small neighborhood for nearest prey
+        let bestD2 = Infinity;
+        for (let j = 0; j < state.prey.length; j++) {
+          const pr = state.prey[j];
+          // compute toroidal distance squared
+          const dx = Math.min(Math.abs(pr.x - pred.x), W - Math.abs(pr.x - pred.x));
+          const dy = Math.min(Math.abs(pr.y - pred.y), H - Math.abs(pr.y - pred.y));
+          if (dx <= V && dy <= V) {
+            const d2 = dx * dx + dy * dy;
+            if (d2 < bestD2) { bestD2 = d2; target = pr; }
+          }
+        }
+      }
+      if (target) moveToward(pred, target, W, H); else moveAgent(pred, W, H);
 
       // Eat one prey on same cell, if any
       const key = pred.y * W + pred.x;
@@ -337,6 +418,15 @@
     initState();
   });
 
+  if (presetSelect) {
+    presetSelect.addEventListener('change', () => {
+      applyPreset(presetSelect.value);
+      // auto-reset to apply immediately
+      setRunning(false);
+      initState();
+    });
+  }
+
   speedRange.addEventListener('input', () => {
     const v = parseInt(speedRange.value, 10) || 60;
     speedLabel.textContent = `${v} ms/tick`;
@@ -349,6 +439,8 @@
 
   // Initialize
   speedLabel.textContent = `${speedRange.value} ms/tick`;
+  // Apply the initial preset on load
+  if (presetSelect) applyPreset(presetSelect.value || 'classic');
   initState();
   // Recompute layout when window resizes
   window.addEventListener('resize', () => {
