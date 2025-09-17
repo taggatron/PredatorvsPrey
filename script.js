@@ -38,6 +38,11 @@
 
   // Chart
   const popCanvas = document.getElementById('popChart');
+  const chartCanvasContainer = document.getElementById('chartCanvasContainer');
+  const expandChartBtn = document.getElementById('expandChartBtn');
+  const chartModal = document.getElementById('chartModal');
+  const chartModalHost = document.getElementById('chartModalCanvasHost');
+  const closeChartBtn = document.getElementById('closeChartBtn');
   const chartWarning = document.getElementById('chartWarning');
   let chart;
 
@@ -206,7 +211,17 @@
         },
         scales: {
           x: {
-            ticks: { color: '#97a0b5', padding: 6 },
+            ticks: {
+              color: '#97a0b5',
+              padding: 6,
+              callback: (val, idx, ticks) => {
+                // labels[] stores ticks; convert to years with 50 ticks = 1 year
+                const t = chart?.data?.labels?.[idx] ?? val;
+                const years = (Number(t) || 0) / 50;
+                return years.toFixed(1);
+              },
+            },
+            title: { display: true, text: 'Time (years)', color: '#97a0b5' },
             grid: { color: 'rgba(255,255,255,0.05)' },
             border: { display: true, color: '#2b3256' },
           },
@@ -491,4 +506,24 @@
     canvas.height = Math.max(100, H * cellSize);
     draw();
   });
+
+  // Full-screen chart modal logic: move canvas into modal host and back
+  function openChartModal() {
+    if (!chartModal || !chartCanvasContainer) return;
+    chartModal.hidden = false;
+    chartModalHost.appendChild(popCanvas);
+    // Resize for new container
+    if (chart) chart.resize();
+  }
+
+  function closeChartModal() {
+    if (!chartModal || !chartCanvasContainer) return;
+    chartModal.hidden = true;
+    chartCanvasContainer.appendChild(popCanvas);
+    if (chart) chart.resize();
+  }
+
+  expandChartBtn?.addEventListener('click', openChartModal);
+  closeChartBtn?.addEventListener('click', closeChartModal);
+  chartModal?.querySelector('.modal-backdrop')?.addEventListener('click', closeChartModal);
 })();

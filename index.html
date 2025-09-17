@@ -128,17 +128,34 @@
       </section>
 
       <section class="panel chart">
-        <h2>Population over time</h2>
+        <div class="panel-header">
+          <h2>Population over time</h2>
+          <button id="expandChartBtn" class="secondary" title="Open full screen">Full screen</button>
+        </div>
         <div id="chartWarning" class="warning" hidden>
           Chart.js didn't load. The population graph is disabled. If you're offline or a content blocker is active, try the README's local server instructions or allow cdn.jsdelivr.net.
         </div>
-        <canvas id="popChart"></canvas>
+        <div id="chartCanvasContainer">
+          <canvas id="popChart"></canvas>
+        </div>
       </section>
     </main>
 
     <footer>
       <a href="./README.md" target="_blank" rel="noopener">README</a>
     </footer>
+
+    <!-- Full-screen Chart Modal -->
+    <div id="chartModal" class="modal" hidden>
+      <div class="modal-backdrop" data-role="close"></div>
+      <div class="modal-content">
+        <div class="modal-bar">
+          <span>Population over time</span>
+          <button id="closeChartBtn" class="secondary" title="Close">Close</button>
+        </div>
+        <div id="chartModalCanvasHost" class="modal-canvas-host"></div>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="./script.js"></script>
