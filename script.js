@@ -246,6 +246,25 @@
               },
             },
           },
+          zoom: {
+            limits: {
+              x: { min: 'original', max: 'original' },
+              y: { min: 'original', max: 'original' },
+              y1: { min: 'original', max: 'original' },
+            },
+            pan: {
+              enabled: true,
+              mode: 'x',
+              modifierKey: null,
+              threshold: 10,
+            },
+            zoom: {
+              wheel: { enabled: true, speed: 0.05 },
+              pinch: { enabled: true },
+              mode: 'x',
+              drag: { enabled: false },
+            },
+          },
         },
         layout: {
           padding: { top: 6, right: 6, bottom: 14, left: 6 },
@@ -277,6 +296,21 @@
     });
     // store max points in chart for clipping
     chart.maxPoints = maxPoints;
+    // Double click/tap to reset zoom
+    popCanvas.addEventListener('dblclick', () => {
+      try { chart.resetZoom?.(); } catch { /* no-op */ }
+    });
+    popCanvas.addEventListener('touchend', (e) => {
+      if (e.touches && e.touches.length === 0 && e.changedTouches && e.changedTouches.length === 1) {
+        // quick double tap detection
+        const now = Date.now();
+        if (!popCanvas._lastTap) popCanvas._lastTap = 0;
+        if (now - popCanvas._lastTap < 350) {
+          try { chart.resetZoom?.(); } catch { /* no-op */ }
+        }
+        popCanvas._lastTap = now;
+      }
+    }, { passive: true });
     chart.computeTrends = function computeTrends(alpha = 0.12) {
       // Exponential smoothing to produce a smooth trend line for each series
       const smooth = (arr) => {
