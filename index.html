@@ -130,7 +130,10 @@
       <section class="panel chart">
         <div class="panel-header">
           <h2>Population over time</h2>
-          <button id="expandChartBtn" class="secondary" title="Open full screen">Full screen</button>
+          <div class="chart-actions">
+            <label class="inline small"><input id="toggleMeanLines" type="checkbox" /> Show trend</label>
+            <button id="expandChartBtn" class="secondary" title="Open full screen">Full screen</button>
+          </div>
         </div>
         <div id="chartWarning" class="warning" hidden>
           Chart.js didn't load. The population graph is disabled. If you're offline or a content blocker is active, try the README's local server instructions or allow cdn.jsdelivr.net.
@@ -151,7 +154,14 @@
       <div class="modal-content">
         <div class="modal-bar">
           <span>Population over time</span>
-          <button id="closeChartBtn" class="secondary" title="Close">Close</button>
+          <div class="modal-actions">
+            <label class="inline small"><input id="toggleMeanLinesModal" type="checkbox" /> Show trend</label>
+            <button id="modalStartPauseBtn" class="secondary" title="Start/Pause">Start</button>
+            <button id="modalResetBtn" class="secondary" title="Reset">Reset</button>
+            <button id="exportPngBtn" class="secondary" title="Export PNG">Export PNG</button>
+            <button id="exportCsvBtn" class="secondary" title="Export CSV">Export CSV</button>
+            <button id="closeChartBtn" class="secondary" title="Close">Close</button>
+          </div>
         </div>
         <div id="chartModalCanvasHost" class="modal-canvas-host"></div>
       </div>

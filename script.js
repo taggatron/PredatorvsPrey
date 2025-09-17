@@ -43,6 +43,12 @@
   const chartModal = document.getElementById('chartModal');
   const chartModalHost = document.getElementById('chartModalCanvasHost');
   const closeChartBtn = document.getElementById('closeChartBtn');
+  const toggleMeanLines = document.getElementById('toggleMeanLines');
+  const toggleMeanLinesModal = document.getElementById('toggleMeanLinesModal');
+  const modalStartPauseBtn = document.getElementById('modalStartPauseBtn');
+  const modalResetBtn = document.getElementById('modalResetBtn');
+  const exportPngBtn = document.getElementById('exportPngBtn');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
   const chartWarning = document.getElementById('chartWarning');
   let chart;
 
@@ -197,6 +203,27 @@
             borderWidth: 2,
             yAxisID: 'y1',
           },
+          // Trend lines (smoothed), hidden by default
+          {
+            label: 'Prey trend',
+            data: [],
+            borderColor: 'rgba(88,240,167,0.6)',
+            backgroundColor: 'transparent',
+            tension: 0.4,
+            pointRadius: 0,
+            hidden: true,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Predators trend',
+            data: [],
+            borderColor: 'rgba(255,107,107,0.6)',
+            backgroundColor: 'transparent',
+            tension: 0.4,
+            pointRadius: 0,
+            hidden: true,
+            yAxisID: 'y1',
+          },
         ],
       },
       options: {
@@ -204,7 +231,21 @@
         animation: false,
         maintainAspectRatio: false, // let CSS control height
         plugins: {
-          legend: { labels: { color: '#e5e7ef' } },
+          legend: {
+            labels: { color: '#e5e7ef' },
+            // Hide trend lines from legend when they are toggled off
+            labels: {
+              color: '#e5e7ef',
+              filter: (legendItem, data) => {
+                const di = legendItem.datasetIndex;
+                if (di === 2 || di === 3) {
+                  const ds = data?.datasets?.[di];
+                  return ds && !ds.hidden; // show only when visible
+                }
+                return true;
+              },
+            },
+          },
         },
         layout: {
           padding: { top: 6, right: 6, bottom: 14, left: 6 },
@@ -236,6 +277,25 @@
     });
     // store max points in chart for clipping
     chart.maxPoints = maxPoints;
+    chart.computeTrends = function computeTrends(alpha = 0.12) {
+      // Exponential smoothing to produce a smooth trend line for each series
+      const smooth = (arr) => {
+        const out = new Array(arr.length);
+        if (!arr.length) return out || [];
+        let s = arr[0];
+        out[0] = s;
+        for (let i = 1; i < arr.length; i++) {
+          const v = arr[i];
+          s = alpha * v + (1 - alpha) * s;
+          out[i] = s;
+        }
+        return out;
+      };
+      const d0 = chart.data.datasets[0].data; // prey
+      const d1 = chart.data.datasets[1].data; // predators
+      chart.data.datasets[2].data = smooth(d0);
+      chart.data.datasets[3].data = smooth(d1);
+    };
   }
 
   function wrap(n, max) { return (n + max) % max; }
@@ -382,7 +442,11 @@
       labels.shift();
       d0.shift();
       d1.shift();
+      // keep trend arrays in sync (they will be recomputed below anyway)
+      if (chart.data.datasets[2].data.length) chart.data.datasets[2].data.shift();
+      if (chart.data.datasets[3].data.length) chart.data.datasets[3].data.shift();
     }
+    chart.computeTrends();
     chart.update('none');
   }
 
@@ -444,6 +508,9 @@
       }
       startPauseBtn.textContent = 'Start';
       stepBtn.disabled = false;
+    }
+    if (modalStartPauseBtn) {
+      modalStartPauseBtn.textContent = timer ? 'Pause' : 'Start';
     }
   }
 
@@ -511,14 +578,19 @@
   function openChartModal() {
     if (!chartModal || !chartCanvasContainer) return;
     chartModal.hidden = false;
+    document.body.classList.add('no-scroll');
     chartModalHost.appendChild(popCanvas);
     // Resize for new container
     if (chart) chart.resize();
+    if (modalStartPauseBtn) {
+      modalStartPauseBtn.textContent = timer ? 'Pause' : 'Start';
+    }
   }
 
   function closeChartModal() {
     if (!chartModal || !chartCanvasContainer) return;
     chartModal.hidden = true;
+    document.body.classList.remove('no-scroll');
     chartCanvasContainer.appendChild(popCanvas);
     if (chart) chart.resize();
   }
@@ -526,4 +598,88 @@
   expandChartBtn?.addEventListener('click', openChartModal);
   closeChartBtn?.addEventListener('click', closeChartModal);
   chartModal?.querySelector('.modal-backdrop')?.addEventListener('click', closeChartModal);
+
+  // Modal keyboard shortcuts: ESC close, Space start/pause, R reset
+  window.addEventListener('keydown', (e) => {
+    if (!chartModal || chartModal.hidden) return;
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) return;
+    if (e.key === 'Escape') {
+      closeChartModal();
+      return;
+    }
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault(); // avoid page scroll
+      const running = !!timer;
+      setRunning(!running);
+      return;
+    }
+    if (e.key && e.key.toLowerCase() === 'r') {
+      e.preventDefault();
+      setRunning(false);
+      initState();
+      return;
+    }
+  });
+
+  // Trend lines toggle (panel and modal stay in sync)
+  function setTrendVisibility(visible) {
+    if (!chart) return;
+    chart.data.datasets[2].hidden = !visible;
+    chart.data.datasets[3].hidden = !visible;
+    chart.update('none');
+  }
+  toggleMeanLines?.addEventListener('change', () => {
+    const v = !!toggleMeanLines.checked;
+    if (toggleMeanLinesModal) toggleMeanLinesModal.checked = v;
+    setTrendVisibility(v);
+  });
+  toggleMeanLinesModal?.addEventListener('change', () => {
+    const v = !!toggleMeanLinesModal.checked;
+    if (toggleMeanLines) toggleMeanLines.checked = v;
+    setTrendVisibility(v);
+  });
+
+  // Modal Start/Pause and Reset mirror the main controls
+  modalStartPauseBtn?.addEventListener('click', () => {
+    const running = !!timer;
+    setRunning(!running);
+    modalStartPauseBtn.textContent = running ? 'Start' : 'Pause';
+  });
+  modalResetBtn?.addEventListener('click', () => {
+    setRunning(false);
+    initState();
+    // Reset button labels after reset
+    const isRunning = !!timer;
+    modalStartPauseBtn.textContent = isRunning ? 'Pause' : 'Start';
+  });
+
+  // Export PNG
+  exportPngBtn?.addEventListener('click', () => {
+    if (!chart) return;
+    const link = document.createElement('a');
+    link.download = 'populations.png';
+    link.href = chart.toBase64Image('image/png', 1);
+    link.click();
+  });
+
+  // Export CSV of current chart series
+  exportCsvBtn?.addEventListener('click', () => {
+    if (!chart) return;
+    const labels = chart.data.labels;
+    const prey = chart.data.datasets[0].data;
+    const pred = chart.data.datasets[1].data;
+    const header = 'tick,years,prey,predators\n';
+    const rows = labels.map((t, i) => {
+      const years = (Number(t) || 0) / 50;
+      return `${t},${years.toFixed(3)},${prey[i] ?? ''},${pred[i] ?? ''}`;
+    });
+    const blob = new Blob([header + rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'populations.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  });
 })();
